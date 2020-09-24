@@ -259,9 +259,14 @@ type Coin []struct{
   Name string `json:"name"`
 }
 
-func handle_err(err error) bool {
+func handle_err(err error, str string) bool {
 	if err != nil {
-    fmt.Println(err)
+    if str == "" {
+      fmt.Println(err)
+    }
+    else {
+      fmt.Println(str)
+    }
     return false
 	}
     return true
@@ -270,22 +275,22 @@ func handle_err(err error) bool {
 func fetch_id_list() bool {
   url := "https://api.coingecko.com/api/v3/coins/list"
   req, err := http.NewRequest("GET", url, nil)
-  handle_err(err)
+  handle_err(err, "")
 
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
-  handle_err(err)
+  handle_err(err, "")
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
   err = ioutil.WriteFile("/tmp/coins.json", body, os.ModePerm)
-  return handle_err(err)
+  return handle_err(err, "")
 }
 
 func ticker_to_id(ticker string) string {
   portfolioJson, err := ioutil.ReadFile("/tmp/coins.json")
-  handle_err(err)
+  handle_err(err, "")
 
   var list Coin
   json.Unmarshal(portfolioJson, &list)
