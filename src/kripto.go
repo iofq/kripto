@@ -261,10 +261,9 @@ type Coin []struct{
 
 func handle_err(err error, str string) bool {
 	if err != nil {
-    if str == "" {
+    if (str == "") {
       fmt.Println(err)
-    }
-    else {
+    } else {
       fmt.Println(str)
     }
     return false
@@ -273,7 +272,7 @@ func handle_err(err error, str string) bool {
 }
 
 func fetch_id_list() bool {
-  url := "https://api.coingecko.com/api/v3/coins/list"
+  url := "https://apt.coingecko.com/api/v3/coins/list"
   req, err := http.NewRequest("GET", url, nil)
   handle_err(err, "")
 
