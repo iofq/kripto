@@ -5,7 +5,7 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=kripto
-DIR=/usr/bin/
+DIR=/usr/local/bin
 
 all: test build
 build: 

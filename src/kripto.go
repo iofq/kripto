@@ -9,6 +9,7 @@ import (
   "io/ioutil"
   "os"
   "runtime"
+  "path/filepath"
 )
 
 /*
@@ -23,6 +24,8 @@ help
 */
 
 var fileName string = findFileName()
+
+const LINUX_PREFIX = "/.local/share/kripto"
 
 const colorReset = "\033[0m"
 const colorRed = "\033[31m"
@@ -90,14 +93,15 @@ func main() {
 }
 
 func findFileName() string {
-    fileName, err := os.UserHomeDir()
+    homeDir, err := os.UserHomeDir()
     if isErr(err) {
         fmt.Println("Cannot find an adequate location for portfolio...")
     }
     if runtime.GOOS == "windows" {
-      return fileName + "\\portfolio.json"
+      return homeDir + "\\portfolio.json"
     }
-    return fileName + "/.portfolio.json"
+    err = os.MkdirAll(filepath.Join(homeDir, LINUX_PREFIX), os.ModePerm)
+    return filepath.Join(homeDir + LINUX_PREFIX + "/.portfolio.json")
 }
 
 func usage() {
@@ -123,7 +127,6 @@ func newPortfolio() {
     _, err := os.Create(fileName)
     if isErr(err) {
         fmt.Println("Cannot create new portfolio.")
-        return
     }
     return
 }
@@ -168,6 +171,11 @@ func listPortfolio() {
     if (len(portfolio)) == 0 {
         fmt.Println("Nothing to see here, add crypto using the add command.")
         return
+    }
+    if _, err := os.Stat("/tmp/coins.json"); os.IsNotExist(err) {
+      if !(fetch_id_list()) {
+        fmt.Println("Error fetching coin data... Maybe API is down?")
+      }
     }
     sum := 0.0
     sum24 := 0.0
@@ -217,7 +225,7 @@ func isErr(err error) bool {
 }
 
 func getPrice(currency string) (usdPrice, usdPrice24, usdPrice7D, percentChange24, percentChange7D float64) {
-    currency = strings.ToLower(currency)
+    currency = strings.ToLower(ticker_to_id(currency))
     url := "https://api.coingecko.com/api/v3/coins/" + currency + "?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false"
 	req, err := http.NewRequest("GET", url, nil)
 	if isErr(err) {
@@ -243,4 +251,48 @@ func getPrice(currency string) (usdPrice, usdPrice24, usdPrice7D, percentChange2
     usdPrice7D = usdPrice / (1+(percentChange7D/100))
 
 	return
+}
+
+type Coin []struct{
+  ID string `json:"id"`
+  Symbol string `json:"symbol"`
+  Name string `json:"name"`
+}
+
+func handle_err(err error) bool {
+	if err != nil {
+    fmt.Println(err)
+    return false
+	}
+    return true
+}
+
+func fetch_id_list() bool {
+  url := "https://api.coingecko.com/api/v3/coins/list"
+  req, err := http.NewRequest("GET", url, nil)
+  handle_err(err)
+
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+  handle_err(err)
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+  err = ioutil.WriteFile("/tmp/coins.json", body, os.ModePerm)
+  return handle_err(err)
+}
+
+func ticker_to_id(ticker string) string {
+  portfolioJson, err := ioutil.ReadFile("/tmp/coins.json")
+  handle_err(err)
+
+  var list Coin
+  json.Unmarshal(portfolioJson, &list)
+  for _,c := range list {
+    if c.Symbol == ticker {
+      return c.ID
+    }
+  }
+  return "N/A"
 }
