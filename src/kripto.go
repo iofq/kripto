@@ -10,6 +10,7 @@ import (
   "os"
   "runtime"
   "path/filepath"
+  "math"
 )
 
 /*
@@ -37,6 +38,7 @@ const colorCyan = "\033[36m"
 const colorWhite = "\033[37m"
 
 func main() {
+
     if len(os.Args) < 2 {
         usage()
         return
@@ -201,19 +203,22 @@ func listPortfolio() {
         sum7D += price7D*v
     }
     fmt.Println("---------------------------------------------------------------------------")
-    fmt.Printf("\n%sTotal: $%.2f%s\n", colorGreen, sum, colorReset)
+    fmt.Printf("\n%sTotal     :  $%.2f%s\n", colorGreen, sum, colorReset)
 
     totalPercent24 := ((sum/sum24)-1)*100
     totalPercent7D := ((sum/sum7D)-1)*100
+    change24 := sum - sum24
+    change7D := sum - sum7D
+
     if(totalPercent24 < 0) {
-        fmt.Printf("Total 24h ago: $%.2f(%s%.2f%%%s)\n", sum24, colorRed, totalPercent24, colorReset)
+        fmt.Printf("24h change: -$%.2f  (-%s%.2f%%%s)\n", math.Abs(change24), colorRed, math.Abs(totalPercent24), colorReset)
     } else {
-        fmt.Printf("Total 24h ago: $%.2f(%s%.2f%%%s)\n", sum24, colorGreen, totalPercent24, colorReset)
+        fmt.Printf("24h change: +$%.2f  (%s%.2f%%%s)\n", change24, colorGreen, totalPercent24, colorReset)
     }
-    if(totalPercent24 < 0) {
-        fmt.Printf("Total 7d ago: $%.2f(%s%.2f%%%s)\n", sum7D, colorRed, totalPercent7D, colorReset)
+    if(totalPercent7D < 0) {
+        fmt.Printf("7d  change: -$%.2f  (-%s%.2f%%%s)\n", math.Abs(change7D), colorRed, math.Abs(totalPercent7D), colorReset)
     } else {
-        fmt.Printf("Total 7d ago: $%.2f(%s%.2f%%%s)\n", sum7D, colorGreen, totalPercent7D, colorReset)
+        fmt.Printf("7d  change: +$%.2f  (%s%.2f%%%s)\n", change7D, colorGreen, totalPercent7D, colorReset)
     }
 }
 
@@ -259,37 +264,39 @@ type Coin []struct{
   Name string `json:"name"`
 }
 
-func handle_err(err error, str string) bool {
+func handle_err(err error, str ...string) bool {
 	if err != nil {
-    if (str == "") {
+    if (str == nil) {
       fmt.Println(err)
     } else {
-      fmt.Println(str)
+      for _,s := range str {
+        fmt.Println(s)
+      }
     }
-    return false
-	}
     return true
+	}
+    return false
 }
 
 func fetch_id_list() bool {
-  url := "https://apt.coingecko.com/api/v3/coins/list"
+  url := "https://api.coingecko.com/api/v3/coins/list"
   req, err := http.NewRequest("GET", url, nil)
-  handle_err(err, "")
+  handle_err(err)
 
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
-  handle_err(err, "")
+  handle_err(err)
 	defer resp.Body.Close()
 
 	body, _ := ioutil.ReadAll(resp.Body)
   err = ioutil.WriteFile("/tmp/coins.json", body, os.ModePerm)
-  return handle_err(err, "")
+  return !(handle_err(err))
 }
 
 func ticker_to_id(ticker string) string {
   portfolioJson, err := ioutil.ReadFile("/tmp/coins.json")
-  handle_err(err, "")
+  handle_err(err)
 
   var list Coin
   json.Unmarshal(portfolioJson, &list)
@@ -298,5 +305,5 @@ func ticker_to_id(ticker string) string {
       return c.ID
     }
   }
-  return "N/A"
+  return ticker
 }
